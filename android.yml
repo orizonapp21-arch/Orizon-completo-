@@ -1,0 +1,50 @@
+name: Gerar APK do Orizon (Android)
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Montar a pasta android-app a partir dos arquivos soltos
+        run: python3 montar_android.py
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Instalar plataforma Android 34
+        run: sdkmanager "platforms;android-34" "build-tools;34.0.0"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.7"
+
+      - name: Descobrir o endereço do seu Orizon (GitHub Pages)
+        id: url
+        run: |
+          OWNER=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
+          REPO="${GITHUB_REPOSITORY#*/}"
+          REPO_LOWER=$(echo "$REPO" | tr '[:upper:]' '[:lower:]')
+          if [ "$REPO_LOWER" = "${OWNER}.github.io" ]; then
+            URL="https://${OWNER}.github.io/"
+          else
+            URL="https://${OWNER}.github.io/${REPO}/"
+          fi
+          echo "Orizon: $URL"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+
+      - name: Compilar o APK
+        working-directory: android-app
+        run: gradle assembleDebug --no-daemon -PORIZON_URL="${{ steps.url.outputs.url }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Orizon-APK
+          path: android-app/app/build/outputs/apk/debug/app-debug.apk

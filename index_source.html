@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Orizon</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icon-96.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#050B1A">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<!-- ===================== ABERTURA (splash): horizonte → logo → ORIZON ===================== -->
+<div class="sp" id="splash-orizon" aria-hidden="true">
+  <div class="sp-luz"></div>
+  <div class="sp-aura"></div>
+  <div class="sp-sol"><img src="logo-emblema.png" alt="" width="240" height="240" decoding="async"></div>
+  <div class="sp-linha"></div>
+  <div class="sp-nome">ORIZON</div>
+  <div class="sp-frase">Seu dinheiro. Seu futuro.</div>
+</div>
+<script>
+(function(){
+  var sp = document.getElementById("splash-orizon");
+  if (!sp) return;
+  try { if (JSON.parse(localStorage.getItem("controlefinanceiro_v1") || "{}").tema === "claro") sp.classList.add("sp-clara"); } catch(e){}
+  document.body.classList.add("splash-ativa");
+  var reduz = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var sair = reduz ? 1200 : 2000, fim = reduz ? 1550 : 2450;
+  setTimeout(function(){ sp.classList.add("sp-saindo"); document.body.classList.remove("splash-ativa"); }, sair);
+  setTimeout(function(){ if (sp.parentNode) sp.parentNode.removeChild(sp); document.body.classList.remove("splash-ativa"); }, fim);
+})();
+</script>
+<div class="fundo-neon" aria-hidden="true"></div>
+
+<!-- ===================== PRIMEIRO ACESSO (boas-vindas em 3 passos) ===================== -->
+<div id="tela-boas-vindas" class="tela-boas-vindas hidden">
+  <div class="boas-vindas-conteudo">
+    <div class="boas-vindas-logo">
+      <img class="logo-img-grande" src="logo-orizon.png" alt="Orizon">
+    </div>
+
+    <div class="bv-passo" data-passo="1">
+      <h1>Que bom ter você aqui! 💙</h1>
+      <p>Obrigado por escolher o <strong>Orizon</strong>. Este é o seu cantinho para enxergar o dinheiro com clareza, sem estresse e no seu ritmo — e para transformar sonhos em metas que saem do papel.</p>
+      <label class="bv-campo">Como posso te chamar?
+        <input type="text" id="bv-nome" placeholder="Seu nome (opcional)" maxlength="30" autocomplete="given-name">
+      </label>
+      <button class="btn-primary" data-bv-proximo>Continuar</button>
+    </div>
+
+    <div class="bv-passo hidden" data-passo="2">
+      <h1>Tudo começa do zero — e só é seu 🔒</h1>
+      <p>Seus dados ficam guardados <strong>somente neste aparelho</strong>. Ninguém que receber o link do Orizon vê o que você lança, e você também não vê o de ninguém. Sem cadastro, sem senha, sem servidor.</p>
+      <p class="boas-vindas-privacidade">Cada pessoa começa com um app limpo, só dela.</p>
+      <button class="btn-primary" data-bv-proximo>Continuar</button>
+      <button class="btn-primary-outline" data-bv-voltar>Voltar</button>
+    </div>
+
+    <div class="bv-passo hidden" data-passo="3">
+      <h1>Um último passo importante 🛡️</h1>
+      <p>Como tudo fica só no seu celular, se você trocar de aparelho, desinstalar o app ou limpar os dados do navegador, <strong>as informações se perdem</strong> — a não ser que exista um backup.</p>
+      <div class="bv-dica">
+        <strong>Faça seu backup logo que lançar os primeiros dados</strong>
+        <span>Toque em ⚙️ no topo → <em>Criar backup</em>. Depois guarde o arquivo em um lugar de confiança: Google Drive, e-mail para você mesmo ou outro serviço de nuvem que você usa.</span>
+      </div>
+      <button class="btn-primary" id="btn-comecar">Entendi, vamos começar!</button>
+      <input type="file" id="input-restaurar-inicial" accept=".json" class="hidden">
+      <button class="btn-primary-outline" id="btn-restaurar-inicial">Já tenho um backup — restaurar</button>
+    </div>
+
+    <div class="bv-pontos" aria-hidden="true"><i class="ativo"></i><i></i><i></i></div>
+  </div>
+</div>
+
+<!-- ===================== TOPO ===================== -->
+<header class="topbar">
+  <div class="topbar-left">
+    <img class="logo-img" src="logo-emblema.png" alt="Orizon">
+    <div class="logo-bloco">
+      <span class="logo-text">Orizon</span>
+      <span class="logo-tagline">Seu dinheiro, seu futuro</span>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <button id="btn-tema" class="icon-btn" title="Alternar tema">🌙</button>
+    <button id="btn-config" class="icon-btn" title="Configurações">⚙️</button>
+  </div>
+</header>
+
+<!-- Faixa de aviso sugerindo fazer backup (aparece de vez em quando) -->
+<div id="lembrete-backup" class="lembrete-backup hidden">
+  <span>🛡️ Faça o backup dos seus dados e guarde num lugar de confiança.</span>
+  <button id="lembrete-backup-agora" class="lembrete-backup-agora">Fazer agora</button>
+  <button id="lembrete-backup-fechar" class="lembrete-backup-fechar">✕</button>
+</div>
+
+<!-- Faixa de alerta de contas a vencer (aparece no topo quando há algo vencendo em até 5 dias) -->
+<div id="alerta-vencimento" class="alerta-vencimento hidden"></div>
+
+<main id="app-main">
+
+  <!-- ---------- PAINEL GERAL ---------- -->
+  <section id="tab-painel" class="tab-content active">
+
+    <!-- 1. Saudação -->
+    <div class="home-header">
+      <div class="home-header-texto">
+        <h1 class="home-saudacao" id="home-saudacao">Olá 👋</h1>
+        <span class="home-data" id="home-data"></span>
+      </div>
+      <button class="btn-voz-painel home-voz" id="btn-voz-painel" title="Registrar por voz" aria-label="Registrar por voz">🎤</button>
+    </div>
+
+    <!-- 2. Frase do dia (toque para ver a outra frase do dia) -->
+    <div class="home-frase" id="home-frase" role="button" tabindex="0" aria-label="Frase do dia. Toque para ver outra.">
+      <span class="home-rotulo">💡 Frase do dia</span>
+      <p class="home-frase-texto" id="home-frase-texto"></p>
+      <span class="home-frase-autor" id="home-frase-autor"></span>
+    </div>
+
+    <!-- 3. Resumo do mês atual -->
+    <div class="home-secao-titulo">
+      <h2 id="home-mes-titulo">📅 Mês</h2>
+      <span>Seu mês até agora</span>
+    </div>
+    <div class="home-kpis">
+      <div class="home-kpi home-kpi-verde"><span class="home-kpi-rotulo">🟢 Entradas</span><strong class="home-valor" id="home-entradas">R$ 0,00</strong></div>
+      <div class="home-kpi home-kpi-vermelho"><span class="home-kpi-rotulo">🔴 Despesas</span><strong class="home-valor" id="home-despesas">R$ 0,00</strong></div>
+      <div class="home-kpi home-kpi-azul"><span class="home-kpi-rotulo">🔵 Saldo</span><strong class="home-valor" id="home-saldo-kpi">R$ 0,00</strong></div>
+      <div class="home-kpi home-kpi-roxo"><span class="home-kpi-rotulo">🟣 Economia</span><strong class="home-valor" id="home-economia">—</strong></div>
+    </div>
+
+    <!-- 4. Saldo do mês -->
+    <div class="home-saldo" id="home-saldo">
+      <button class="hero-olho" id="hero-olho" title="Mostrar/ocultar valores" aria-label="Mostrar ou ocultar valores">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+      <span class="home-rotulo">💰 Saldo do mês</span>
+      <strong class="home-saldo-valor home-valor" id="home-saldo-valor">R$ 0,00</strong>
+      <span class="home-saldo-status" id="home-saldo-status"></span>
+    </div>
+
+    <!-- 4b. Compras pendentes (cartão) -->
+    <div class="card home-card home-pendentes" id="home-pendentes-card">
+      <h2>🔔 Compras pendentes <span class="pend-badge hidden" id="pend-badge">0</span></h2>
+      <div id="home-pendentes"></div>
+    </div>
+
+    <!-- 5. Atenção -->
+    <div class="card home-card">
+      <h2>🔔 Atenção</h2>
+      <div id="home-atencao"></div>
+    </div>
+
+    <!-- 6. Seu momento financeiro -->
+    <div class="card home-card">
+      <h2>🧠 Seu momento financeiro</h2>
+      <div id="home-momento" class="home-momento"></div>
+    </div>
+
+    <!-- 7. Cartões -->
+    <div class="card home-card">
+      <h2>💳 Cartões</h2>
+      <div id="home-cartoes"></div>
+    </div>
+
+    <!-- 8. Meta -->
+    <div class="card home-card">
+      <h2>🎯 Minha meta</h2>
+      <div id="home-meta"></div>
+    </div>
+
+    <!-- 9. Dica -->
+    <div class="home-dica">
+      <span class="home-rotulo">💡 Dica do ORIZON</span>
+      <p id="home-dica-texto"></p>
+    </div>
+
+    <!-- 10. Mensagem final -->
+    <p class="home-final" id="home-final"></p>
+
+  </section>
+
+  <!-- ---------- MÊS ---------- -->
+  <section id="tab-mes" class="tab-content">
+
+    <div class="meses-scroller-linha">
+      <div class="meses-scroller" id="meses-scroller"></div>
+      <button class="btn-formatar-mes" id="btn-formatar-mes" title="Formatar este mês">🗑️</button>
+    </div>
+    <p class="mes-titulo-ano" id="mes-titulo-ano"></p>
+
+    <div class="card">
+      <h2>Total do mês</h2>
+      <canvas id="grafico-totais-mes" class="grafico-canvas" width="500" height="260"></canvas>
+    </div>
+
+    <div class="card">
+      <h2>Cada despesa do mês</h2>
+      <div class="grafico-scroll-wrap"><canvas id="grafico-despesas-individuais" class="grafico-canvas" width="500" height="230"></canvas></div>
+    </div>
+
+    <div class="card">
+      <div class="kpi-grid">
+        <div class="kpi">
+          <span class="kpi-label">💰 Renda total</span>
+          <span class="kpi-valor" id="mes-renda-total">R$ 0,00</span>
+        </div>
+        <div class="kpi">
+          <span class="kpi-label">🧾 Despesas total</span>
+          <span class="kpi-valor" id="mes-despesa-total">R$ 0,00</span>
+        </div>
+        <div class="kpi kpi-saldo" id="mes-saldo-container">
+          <span class="kpi-label">Saldo</span>
+          <span class="kpi-valor" id="mes-saldo">R$ 0,00</span>
+        </div>
+        <div class="kpi kpi-saldo kpi-destaque-suave">
+          <span class="kpi-label">Saldo disponível (já descontando o que foi pago)</span>
+          <span class="kpi-valor" id="mes-saldo-disponivel">R$ 0,00</span>
+        </div>
+      </div>
+      <p class="alerta-limite hidden" id="mes-alerta-limite">🚨 Limite estourado! Suas despesas passaram da sua renda.</p>
+    </div>
+
+    <div class="card">
+      <h2>Renda mensal</h2>
+      <div id="renda-lista" class="lista-itens"></div>
+      <button class="btn-primary-outline" id="btn-add-renda">+ Adicionar renda</button>
+    </div>
+
+    <div class="card">
+      <h2>Contas a vencer</h2>
+      <div id="contas-vencer-lista" class="lista-itens"></div>
+    </div>
+
+    <div class="card">
+      <h2>Despesas pagas x pendentes</h2>
+      <div class="kpi-grid kpi-grid-2">
+        <div class="kpi">
+          <span class="kpi-label">😄 Pagas</span>
+          <span class="kpi-valor" id="mes-despesas-pagas">R$ 0,00</span>
+        </div>
+        <div class="kpi">
+          <span class="kpi-label">😕 Pendentes</span>
+          <span class="kpi-valor" id="mes-despesas-pendentes">R$ 0,00</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Despesas do mês</h2>
+      <div class="campo-busca-wrap">
+        <input type="text" id="despesas-busca" placeholder="🔎 Buscar por nome, categoria ou forma de pagamento...">
+      </div>
+      <div class="opcoes-limite filtros-rapidos" id="despesas-filtros">
+        <button class="chip-opcao ativo" data-filtro="todas">Todas</button>
+        <button class="chip-opcao" data-filtro="pagas">Pagas</button>
+        <button class="chip-opcao" data-filtro="pendentes">Pendentes</button>
+        <button class="chip-opcao" data-filtro="Pix">Pix</button>
+        <button class="chip-opcao" data-filtro="Crédito">Crédito</button>
+        <button class="chip-opcao" data-filtro="Boleto">Boleto</button>
+        <button class="chip-opcao" data-filtro="Parcelado">Parceladas</button>
+      </div>
+      <div id="despesas-lista" class="lista-itens"></div>
+      <button class="btn-primary-outline" id="btn-add-despesa">+ Adicionar despesa</button>
+    </div>
+
+    <div class="card">
+      <h2>📅 Calendário financeiro</h2>
+      <p class="config-desc" style="margin-bottom:12px;">Verde: tudo pago no dia. Vermelho: há pendência. Toque num dia para ver as despesas dele.</p>
+      <div id="calendario-financeiro" class="calendario-financeiro"></div>
+    </div>
+
+    <div class="card">
+      <h2>📈 Estatísticas</h2>
+      <div class="kpi-grid" id="estatisticas-grid"></div>
+    </div>
+
+    <div class="card">
+      <h2>🧠 Análise Automática</h2>
+      <div id="analise-automatica-lista" class="analise-automatica-lista"></div>
+    </div>
+
+    <div class="card">
+      <h2>💳 Cartões de crédito</h2>
+      <p class="config-desc" style="margin-bottom:12px;">O total de cada cartão entra na soma de despesas do mês. Toque num cartão pra lançar o total do mês e as compras parceladas. Os cartões e limites são cadastrados na aba <strong>Cartões</strong>.</p>
+      <div id="cartoes-lista" class="lista-itens"></div>
+      <button class="btn-primary-outline" id="btn-add-cartao">+ Adicionar cartão só neste mês</button>
+    </div>
+
+    <div class="card">
+      <h2>Despesas por categoria</h2>
+      <canvas id="grafico-categorias" class="grafico-canvas" width="700" height="420"></canvas>
+      <div id="categorias-legenda" class="categorias-legenda"></div>
+    </div>
+
+    <div class="card">
+      <h2>Diagnóstico financeiro (regra 50/30/20)</h2>
+      <div id="diagnostico-lista" class="diagnostico-lista"></div>
+    </div>
+
+  </section>
+
+  <!-- ---------- METAS FINANCEIRAS ---------- -->
+  <!-- ---------- CENTRAL DOS CARTÕES ---------- -->
+  <section id="tab-cartoes" class="tab-content">
+    <div class="card">
+      <h2>💳 Cartões</h2>
+      <p class="config-desc" style="margin-bottom:12px;">Central dos seus cartões de crédito e débito. O limite vale para todos os meses.</p>
+      <div class="seg" id="cc-abas">
+        <button type="button" data-tipo="credito" class="ativo">Crédito</button>
+        <button type="button" data-tipo="debito">Débito</button>
+      </div>
+    </div>
+    <div class="card" id="cc-resumo"></div>
+    <button class="btn-primary" id="btn-cc-adicionar" style="margin-bottom:14px;">+ Adicionar cartão</button>
+    <div class="card">
+      <h2>Seus cartões</h2>
+      <div id="cc-lista" class="lista-itens"></div>
+      <button class="btn-primary-outline" id="btn-cc-ir-mes" style="margin-top:10px;">Lançar fatura no Mês →</button>
+    </div>
+    <div class="card hidden" id="cc-parceladas-card">
+      <h2>📦 Compras parceladas</h2>
+      <p class="config-desc" style="margin-bottom:10px;">Parcelas que ainda vão cair nos próximos meses — elas já estão reduzindo o seu limite.</p>
+      <div id="cc-parceladas-lista" class="lista-itens"></div>
+    </div>
+  </section>
+
+  <section id="tab-metas" class="tab-content">
+    <div class="card">
+      <h2>🎯 Metas financeiras</h2>
+      <p class="config-desc" style="margin-bottom:14px;">Crie objetivos de economia, acompanhe o progresso e vá guardando dinheiro pra eles.</p>
+      <button class="btn-primary" id="btn-nova-meta">+ Nova meta</button>
+    </div>
+    <div id="metas-lista"></div>
+  </section>
+
+  <!-- ---------- EVOLUÇÃO FINANCEIRA ---------- -->
+  <section id="tab-evolucao" class="tab-content">
+    <div class="card">
+      <h2>📈 Patrimônio mês a mês</h2>
+      <canvas id="grafico-evolucao" class="grafico-canvas" width="700" height="320"></canvas>
+    </div>
+
+    <p id="evolucao-sem-dados" class="lista-vazia hidden" style="padding:0 4px;">Cadastre renda e despesas em pelo menos um mês para ver sua evolução financeira aqui.</p>
+
+    <div id="evolucao-resumo">
+      <div class="card">
+        <h2>Resumo do ano</h2>
+        <div class="kpi-grid">
+          <div class="kpi kpi-saldo">
+            <span class="kpi-label">💎 Total economizado no ano</span>
+            <span class="kpi-valor" id="evo-total-economizado">R$ 0,00</span>
+          </div>
+          <div class="kpi">
+            <span class="kpi-label">🏆 Melhor mês</span>
+            <span class="kpi-valor" id="evo-melhor-mes" style="font-size:15px;">—</span>
+          </div>
+          <div class="kpi">
+            <span class="kpi-label">📉 Pior mês</span>
+            <span class="kpi-valor" id="evo-pior-mes" style="font-size:15px;">—</span>
+          </div>
+          <div class="kpi">
+            <span class="kpi-label">🧾 Média de gastos</span>
+            <span class="kpi-valor" id="evo-media-gastos" style="font-size:16px;">R$ 0,00</span>
+          </div>
+          <div class="kpi">
+            <span class="kpi-label">💰 Média de renda</span>
+            <span class="kpi-valor" id="evo-media-renda" style="font-size:16px;">R$ 0,00</span>
+          </div>
+          <div class="kpi kpi-saldo">
+            <span class="kpi-label">📊 Crescimento desde o 1º mês com dados</span>
+            <span class="kpi-valor" id="evo-crescimento">—</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  
+    <div class="card">
+      <h2>📊 Renda x Despesas por mês</h2>
+      <canvas id="grafico-anual" class="grafico-canvas" width="700" height="360"></canvas>
+    </div>
+
+    <div class="card">
+      <h2>🗓️ Tabela de controle anual</h2>
+      <div id="tabela-anual" class="tabela-anual"></div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ===================== NAVEGAÇÃO INFERIOR ===================== -->
+<nav class="bottom-nav">
+  <button class="nav-item active" data-tab="tab-painel">
+    <span class="nav-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10.5V20h13v-9.5"/><path d="M10 20v-5h4v5"/></svg></span><span>Painel</span>
+  </button>
+  <button class="nav-item" data-tab="tab-mes">
+    <span class="nav-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17"/><path d="M8 3v4M16 3v4"/><circle cx="8.5" cy="14" r=".9" fill="currentColor"/><circle cx="12" cy="14" r=".9" fill="currentColor"/><circle cx="15.5" cy="14" r=".9" fill="currentColor"/></svg></span><span>Mês</span>
+  </button>
+  <button class="nav-item" data-tab="tab-cartoes">
+    <span class="nav-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.8" y="5.5" width="18.4" height="13" rx="2.5"/><path d="M2.8 10h18.4"/><path d="M6.5 15h3"/></svg></span><span>Cartões</span>
+  </button>
+  <button class="nav-item" data-tab="tab-metas">
+    <span class="nav-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><path d="m12 12 7-7"/></svg></span><span>Metas</span>
+  </button>
+  <button class="nav-item" data-tab="tab-evolucao">
+    <span class="nav-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg></span><span>Evolução</span>
+  </button>
+</nav>
+
+<!-- ===================== MODAL: RENDA ===================== -->
+<div class="modal-overlay hidden" id="modal-renda">
+  <div class="modal">
+    <h3>Adicionar renda</h3>
+    <label>Descrição
+      <div class="campo-com-botao">
+        <input type="text" id="renda-descricao" placeholder="Ex: Salário">
+        <button type="button" class="btn-microfone" id="btn-microfone-renda" title="Ditar por voz">🎤</button>
+      </div>
+    </label>
+    <label>Valor (R$)<input type="number" id="renda-valor" min="0" step="0.01" placeholder="0,00"></label>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="renda-cancelar">Cancelar</button>
+      <button class="btn-primary" id="renda-confirmar">Adicionar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: DESPESA ===================== -->
+<div class="modal-overlay hidden" id="modal-despesa">
+  <div class="modal">
+    <h3 id="despesa-modal-titulo">Adicionar despesa</h3>
+    <label>Descrição
+      <div class="campo-com-botao">
+        <input type="text" id="despesa-descricao" placeholder="Ex: Conta de luz">
+        <button type="button" class="btn-microfone" id="btn-microfone-despesa" title="Ditar por voz">🎤</button>
+      </div>
+    </label>
+    <label>Foto/ícone (opcional)
+      <div class="campo-icone-opcional">
+        <img id="despesa-icone-preview" class="icone-preview hidden" alt="">
+        <input type="file" id="despesa-icone-input" accept="image/*" class="hidden">
+        <button type="button" class="btn-primary-outline" id="btn-escolher-icone">📷 Escolher foto</button>
+        <button type="button" class="btn-secondary hidden" id="btn-remover-icone">Remover</button>
+      </div>
+    </label>
+    <label>Valor (R$)<input type="number" id="despesa-valor" min="0" step="0.01" placeholder="0,00"></label>
+    <label>Vencimento<input type="date" id="despesa-vencimento"></label>
+    <label>Categoria
+      <select id="despesa-categoria"></select>
+    </label>
+    <label>Forma de pagamento
+      <select id="despesa-pagamento">
+        <option>Pix</option>
+        <option>Á vista</option>
+        <option>Crédito</option>
+        <option>Boleto</option>
+        <option>Transferência</option>
+        <option>Parcelado</option>
+      </select>
+    </label>
+    <label id="label-parcelas" class="hidden">Quantidade de parcelas<input type="number" id="despesa-parcelas" min="2" step="1" placeholder="2"></label>
+    <div class="linha-toggle linha-recorrencia-cartao">
+      <span>🔁 Repetir no mês seguinte?</span>
+      <label class="switch"><input type="checkbox" id="despesa-recorrencia"><span class="slider"></span></label>
+    </div>
+    <p class="config-desc hidden" id="despesa-recorrencia-aviso" style="margin:0;"></p>
+    <p class="backup-info" style="margin:0;">Ao ligar, a conta aparece no próximo mês, pendente e 100% editável. Lá você decide se ela continua.</p>
+    <div class="linha-toggle">
+      <span>Já foi paga?</span>
+      <label class="switch"><input type="checkbox" id="despesa-paga"><span class="slider"></span></label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="despesa-cancelar">Cancelar</button>
+      <button class="btn-primary" id="despesa-confirmar">Adicionar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: BACKUP ===================== -->
+<!-- ===================== MODAL: NOVO CARTÃO ===================== -->
+<div class="modal-overlay hidden" id="modal-cartao">
+  <div class="modal">
+    <h3 id="cartao-modal-titulo">Adicionar cartão</h3>
+    <label>Nome do cartão
+      <div class="campo-com-botao">
+        <input type="text" id="cartao-nome" placeholder="Ex: Nubank, Inter...">
+        <button type="button" class="btn-microfone" id="btn-microfone-cartao" title="Ditar por voz">🎤</button>
+      </div>
+    </label>
+    <label>Foto/ícone (opcional)
+      <div class="campo-icone-opcional">
+        <img id="cartao-icone-preview" class="icone-preview hidden" alt="">
+        <input type="file" id="cartao-icone-input" accept="image/*" class="hidden">
+        <button type="button" class="btn-primary-outline" id="btn-escolher-icone-cartao">📷 Escolher foto</button>
+        <button type="button" class="btn-secondary hidden" id="btn-remover-icone-cartao">Remover</button>
+      </div>
+    </label>
+    <label>Qual é o limite total do cartão? (R$)
+      <input type="number" id="cartao-limite" inputmode="decimal" min="0" step="0.01" placeholder="Ex: 5000">
+    </label>
+    <label>Quanto tem disponível para uso agora? (R$)
+      <input type="number" id="cartao-disponivel" inputmode="decimal" min="0" step="0.01" placeholder="Em branco = limite inteiro">
+    </label>
+    <p class="backup-info" style="margin:0;">Esse disponível é só o ponto de partida: a cada gasto lançado ele vai diminuindo.</p>
+    <div class="linha-dupla">
+      <label>Dia do fechamento<input type="number" id="cartao-fechamento" min="1" max="31" placeholder="Ex: 20"></label>
+      <label>Dia do vencimento<input type="number" id="cartao-vencimento-dia" min="1" max="31" placeholder="Ex: 27"></label>
+    </div>
+    <div class="linha-toggle">
+      <span>🔁 Repetir este cartão no mês seguinte?</span>
+      <label class="switch"><input type="checkbox" id="cartao-recorrencia"><span class="slider"></span></label>
+    </div>
+    <p class="backup-info" style="margin:0;">Ao ligar, o cartão aparece no próximo mês já com o que sobrar do disponível. Lá você decide se ele continua.</p>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="cartao-cancelar">Cancelar</button>
+      <button class="btn-primary" id="cartao-confirmar">Adicionar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: COMPRA DE CARTÃO (confirmação) ===================== -->
+<div class="modal-overlay hidden" id="modal-compra-pendente">
+  <div class="modal pc-modal">
+    <h3 id="pc-titulo">💳 Nova compra identificada</h3>
+    <p class="pc-origem" id="pc-origem"></p>
+    <p class="pc-aviso hidden" id="pc-aviso"></p>
+    <p class="pc-banco" id="pc-banco-txt"></p>
+
+    <label>Cartão<select id="pc-cartao"></select></label>
+    <label>Estabelecimento<input type="text" id="pc-estab" placeholder="Ex: Mercado XYZ" maxlength="60"></label>
+    <div class="linha-dupla">
+      <label>Valor total (R$)<input type="number" id="pc-valor" inputmode="decimal" min="0" step="0.01" placeholder="0,00"></label>
+      <label>Parcelas<input type="number" id="pc-parcelas" inputmode="numeric" min="1" max="48" placeholder="1"></label>
+    </div>
+    <div class="linha-dupla">
+      <label>Data da compra<input type="date" id="pc-data"></label>
+      <label>Horário<input type="time" id="pc-hora"></label>
+    </div>
+    <label>Categoria<select id="pc-categoria"></select></label>
+
+    <div class="pc-fatura-box">
+      <div id="pc-sugestao"></div>
+      <label>📅 Em qual fatura essa compra deve entrar?<select id="pc-fatura"></select></label>
+    </div>
+    <div class="pc-conf" id="pc-conferencia"></div>
+    <p class="pc-limite" id="pc-limite"></p>
+    <p class="pc-erro" id="pc-erro" role="alert"></p>
+
+    <div class="modal-actions pc-acoes">
+      <button class="btn-primary" id="pc-confirmar" type="button">✓ Confirmar lançamento</button>
+      <button class="btn-secondary" id="pc-ignorar" type="button">Ignorar compra</button>
+      <button class="btn-secondary" id="pc-fechar" type="button">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: LISTA DE COMPRAS PENDENTES ===================== -->
+<div class="modal-overlay hidden" id="modal-compras-pendentes">
+  <div class="modal">
+    <h3>🔔 Compras pendentes</h3>
+    <div id="pc-lista"></div>
+    <div id="pc-recentes"></div>
+    <div class="modal-actions"><button class="btn-secondary" id="pc-lista-fechar" type="button">Fechar</button></div>
+  </div>
+</div>
+
+<!-- confirmação visual depois de lançar -->
+<div class="compra-lancada hidden" id="compra-lancada" role="status" aria-live="polite"></div>
+
+<!-- ===================== MODAL: DETALHE DO CARTÃO ===================== -->
+<div class="modal-overlay hidden" id="modal-cartao-detalhe">
+  <div class="modal">
+    <h3 id="cartao-detalhe-nome">Cartão</h3>
+
+    <div class="linha-dupla">
+      <label>Limite total (R$)<input type="number" id="cartao-detalhe-limite" inputmode="decimal" min="0" step="0.01" placeholder="0,00"></label>
+      <label>Disponível no início do mês<input type="number" id="cartao-detalhe-disponivel" inputmode="decimal" min="0" step="0.01" placeholder="0,00"></label>
+    </div>
+    <div class="linha-dupla">
+      <label>Dia do fechamento<input type="number" id="cartao-detalhe-fechamento" min="1" max="31" placeholder="Ex: 20"></label>
+      <label>Dia do vencimento<input type="number" id="cartao-detalhe-vencimento" min="1" max="31" placeholder="Ex: 27"></label>
+    </div>
+    <p class="cartao-disponivel-modal" id="cartao-limite-disponivel-exibido">Informe o limite acima para acompanhar quanto ainda dá pra usar.</p>
+
+    <div class="opcoes-limite" style="flex-wrap:wrap;">
+      <button class="chip-opcao" data-modo="itens">Compra a compra</button>
+      <button class="chip-opcao" data-modo="semana">Total da semana</button>
+      <button class="chip-opcao" data-modo="total">Total do mês</button>
+    </div>
+
+    <div id="cartao-modo-itens">
+      <div id="cartao-compras-lista" class="lista-itens"></div>
+      <div class="linha-toggle" style="gap:8px;">
+        <input type="text" id="compra-descricao" placeholder="Descrição da compra" style="flex:2;">
+        <input type="number" id="compra-valor" placeholder="R$" min="0" step="0.01" style="flex:1;">
+        <button type="button" class="btn-microfone" id="btn-microfone-compra" title="Ditar por voz">🎤</button>
+      </div>
+      <div class="linha-parcelas-compra">
+        <label>Parcelas<input type="number" id="compra-parcelas" min="1" max="12" inputmode="numeric" placeholder="1"></label>
+        <p class="backup-info" style="margin:0;">Parcelado? Informe o valor <strong>total</strong> e o nº de parcelas: cada parcela cai num mês seguinte e já reduz o limite desde agora.</p>
+      </div>
+      <button class="btn-primary-outline" id="btn-add-compra">+ Adicionar compra</button>
+    </div>
+
+    <div id="cartao-modo-semana" class="hidden">
+      <p class="backup-info" style="margin:0 0 8px;">Some tudo o que gastou em cada semana e lance só o total dela.</p>
+      <div id="cartao-semanas-lista" class="lista-itens"></div>
+    </div>
+
+    <div id="cartao-modo-total" class="hidden">
+      <label>Valor total do mês / fatura (R$)<input type="number" id="cartao-total-manual" min="0" step="0.01" placeholder="0,00"></label>
+    </div>
+
+    <p class="backup-info" id="cartao-total-exibido">Total: R$ 0,00</p>
+
+    <div class="linha-toggle">
+      <span>✅ Fatura já paga neste mês? <small class="nota-limite-liberado">(libera o limite)</small></span>
+      <label class="switch"><input type="checkbox" id="cartao-detalhe-paga"><span class="slider"></span></label>
+    </div>
+    <div class="linha-toggle">
+      <span>🔁 Repetir no mês seguinte?</span>
+      <label class="switch"><input type="checkbox" id="cartao-detalhe-recorrencia"><span class="slider"></span></label>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-danger-outline" id="btn-remover-cartao" style="width:auto; padding:10px 16px;">🗑️ Remover cartão</button>
+      <button class="btn-secondary" id="cartao-detalhe-fechar">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: CONFIGURAÇÕES ===================== -->
+<!-- ===================== MODAL: CARTÃO DA CENTRAL ===================== -->
+<div class="modal-overlay hidden" id="modal-cartao-central">
+  <div class="modal">
+    <h3 id="cc-modal-titulo">Adicionar cartão</h3>
+    <div class="seg" id="cc-tipo-seg">
+      <button type="button" data-tipo="credito" class="ativo">Crédito</button>
+      <button type="button" data-tipo="debito">Débito</button>
+    </div>
+    <p class="backup-info hidden" id="cc-tipo-fixo" style="margin:0;"></p>
+
+    <div class="cc-preview-linha"><span id="cc-logo-previa"></span><div style="flex:1;">
+      <label>Nome do cartão<input type="text" id="cc-nome" placeholder="Ex: Nubank Ultravioleta"></label></div></div>
+
+    <label>Escolha o banco
+      <input type="text" id="cc-busca-banco" placeholder="🔍 Pesquisar banco...">
+    </label>
+    <div class="cc-bancos" id="cc-bancos"></div>
+    <button type="button" class="btn-secondary" id="btn-cc-outro" style="width:100%;">Outro banco (digitar o nome)</button>
+
+    <label>Foto do cartão (opcional)
+      <div class="campo-icone-opcional">
+        <input type="file" id="cc-foto-input" accept="image/*" class="hidden">
+        <button type="button" class="btn-primary-outline" id="btn-cc-foto">📷 Escolher foto</button>
+        <button type="button" class="btn-secondary hidden" id="btn-cc-remover-foto">Remover</button>
+      </div>
+    </label>
+
+    <div id="cc-bloco-credito">
+      <label>Limite total do cartão (R$)
+        <input type="number" id="cc-limite" inputmode="decimal" min="0" step="0.01" placeholder="Ex: 2500">
+      </label>
+      <label>Limite adicional do Pix no crédito (opcional)
+        <input type="number" id="cc-limite-adicional" inputmode="decimal" min="0" step="0.01" placeholder="Ex: Nubank 272,83">
+      </label>
+      <p class="backup-info" style="margin:0;">Se o banco te dá um limite extra só para Pix no crédito, digite aqui. Ele soma ao limite normal.</p>
+      <label>Disponível agora (R$)
+        <input type="number" id="cc-disponivel" inputmode="decimal" min="0" step="0.01" placeholder="Em branco = limite inteiro">
+      </label>
+      <p class="backup-info" id="cc-disponivel-dica" style="margin:0;"></p>
+      <div class="linha-dupla">
+        <label>Dia do fechamento<input type="number" id="cc-fechamento" min="1" max="31" placeholder="Ex: 5"></label>
+        <label>Dia do vencimento<input type="number" id="cc-vencimento" min="1" max="31" placeholder="Ex: 12"></label>
+      </div>
+    </div>
+
+    <div id="cc-faturas-bloco" class="hidden">
+      <h4 class="cc-sub-titulo">Faturas mês a mês</h4>
+      <p class="cartao-disponivel-modal" id="cc-faturas-resumo"></p>
+      <p class="backup-info" style="margin:0 0 6px;">Marque como paga quando pagar a fatura: o valor volta para o limite. O total de cada mês você lança na aba Mês.</p>
+      <div id="cc-faturas-lista"></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-danger-outline hidden" id="btn-cc-excluir" style="width:auto; padding:10px 14px;">🗑️ Excluir</button>
+      <button class="btn-secondary" id="cc-cancelar">Cancelar</button>
+      <button class="btn-primary" id="cc-salvar">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-configuracoes">
+  <div class="modal modal-config">
+    <h3>⚙️ Configurações</h3>
+
+    <!-- --- Dados e Backup --- -->
+    <div class="config-secao">
+      <h4>💾 Dados e Backup</h4>
+      <p class="backup-desc">
+        Tudo que você preenche fica salvo só neste aparelho. Se trocar de celular, desinstalar o
+        app ou limpar os dados do navegador, essas informações são perdidas — <strong>a menos que
+        você tenha um backup</strong>.
+      </p>
+      <p class="backup-info" id="backup-ultima-info">Você ainda não fez nenhum backup.</p>
+      <button class="btn-primary-outline" id="btn-exportar-backup">💾 Criar backup</button>
+      <input type="file" id="input-importar-backup" accept=".json" class="hidden">
+      <button class="btn-primary-outline" id="btn-importar-backup">📂 Restaurar backup</button>
+      <button class="btn-danger-outline" id="btn-apagar-tudo">🗑️ Apagar todos os dados</button>
+    </div>
+
+    <!-- --- Notificações --- -->
+    <div class="config-secao">
+      <h4>🔔 Notificações</h4>
+      <div class="linha-toggle">
+        <span>Notificações</span>
+        <label class="switch"><input type="checkbox" id="cfg-notif-ativado"><span class="slider"></span></label>
+      </div>
+      <p class="config-subtitulo">Avisar sobre contas:</p>
+      <label class="linha-checkbox"><input type="checkbox" id="cfg-dias-5"> 5 dias antes</label>
+      <label class="linha-checkbox"><input type="checkbox" id="cfg-dias-3"> 3 dias antes</label>
+      <label class="linha-checkbox"><input type="checkbox" id="cfg-dias-1"> 1 dia antes</label>
+      <label class="linha-checkbox"><input type="checkbox" id="cfg-dias-0"> No dia do vencimento</label>
+      <div class="linha-toggle">
+        <span>🔊 Som</span>
+        <label class="switch"><input type="checkbox" id="cfg-notif-som"><span class="slider"></span></label>
+      </div>
+      <div class="linha-toggle">
+        <span>📳 Vibração</span>
+        <label class="switch"><input type="checkbox" id="cfg-notif-vibracao"><span class="slider"></span></label>
+      </div>
+    </div>
+
+    <!-- --- Personalização --- -->
+    <div class="config-secao">
+      <h4>👋 Mensagem de saudação</h4>
+      <label>Seu nome (opcional)<input type="text" id="cfg-nome-usuario" placeholder="Como você quer ser chamado?"></label>
+      <p class="config-subtitulo">Estilo das mensagens:</p>
+      <div class="opcoes-limite" style="flex-wrap:wrap;">
+        <button class="chip-opcao" data-estilo="padrao">Padrão</button>
+        <button class="chip-opcao" data-estilo="animado">Animado</button>
+        <button class="chip-opcao" data-estilo="divertido">Divertido</button>
+        <button class="chip-opcao" data-estilo="piadista">Piadista</button>
+        <button class="chip-opcao" data-estilo="bravo">Rabugento</button>
+      </div>
+    </div>
+
+    <!-- --- Alertas financeiros --- -->
+    <div class="config-secao">
+      <h4>📊 Alertas financeiros</h4>
+      <div class="linha-toggle">
+        <span>Alertar sobre uso da renda</span>
+        <label class="switch"><input type="checkbox" id="cfg-alerta-ativado"><span class="slider"></span></label>
+      </div>
+      <p class="config-subtitulo">Alertar quando despesas atingirem:</p>
+      <div class="opcoes-limite">
+        <button class="chip-opcao" data-limite="80">80%</button>
+        <button class="chip-opcao" data-limite="90">90%</button>
+        <button class="chip-opcao" data-limite="100">100%</button>
+      </div>
+    </div>
+
+    <!-- --- Compras do cartão --- -->
+    <div class="config-secao">
+      <h4>💳 Compras do cartão</h4>
+      <p class="config-subtitulo" id="cfg-compras-status"></p>
+      <p class="config-subtitulo">Compras detectadas ficam <b>pendentes</b> até você confirmar a fatura. No app Android, ao abrir o Orizon ele também confere as notificações de compra que já estão na barra do celular. O Orizon só usa o texto da notificação de compra (valor, local e data): nunca pede senha, token, nem entra no app do banco, e nada é enviado a terceiros.</p>
+      <button class="btn-primary-outline hidden" id="cfg-android-permissao" type="button" style="margin-bottom:8px;">🔔 Autorizar leitura das notificações de compra</button>
+      <button class="btn-primary-outline" id="cfg-compra-manual" type="button">＋ Registrar compra manualmente</button>
+      <button class="btn-primary-outline" id="cfg-compra-teste" type="button" style="margin-top:8px;">🧪 Simular compra (teste)</button>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-secondary" id="config-fechar">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: NOVA/EDITAR META ===================== -->
+<div class="modal-overlay hidden" id="modal-meta">
+  <div class="modal">
+    <h3 id="meta-modal-titulo">Nova meta</h3>
+    <label>Nome da meta
+      <div class="campo-com-botao">
+        <input type="text" id="meta-nome" placeholder="Ex: Reserva de emergência">
+        <button type="button" class="btn-microfone" id="btn-microfone-meta" title="Ditar por voz">🎤</button>
+      </div>
+    </label>
+    <label>Valor desejado (R$)<input type="number" id="meta-valor-desejado" min="0" step="0.01" placeholder="0,00"></label>
+    <label>Valor já guardado (R$)<input type="number" id="meta-valor-guardado" min="0" step="0.01" placeholder="0,00"></label>
+    <label>Data alvo (opcional)<input type="date" id="meta-data"></label>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="meta-cancelar">Cancelar</button>
+      <button class="btn-primary" id="meta-confirmar">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: CONFIRMAÇÃO ELEGANTE ===================== -->
+<div class="modal-overlay hidden" id="modal-confirmacao">
+  <div class="modal modal-confirmacao">
+    <h3 id="confirmacao-titulo">⚠️ Confirmar ação</h3>
+    <p id="confirmacao-mensagem" class="config-desc"></p>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="confirmacao-cancelar">Cancelar</button>
+      <button class="btn-danger-outline" id="confirmacao-confirmar" style="width:auto; padding:10px 20px;">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: DESPESAS DE UM DIA (calendário) ===================== -->
+<div class="modal-overlay hidden" id="modal-calendario-dia">
+  <div class="modal">
+    <h3 id="calendario-dia-titulo">Despesas do dia</h3>
+    <div id="calendario-dia-lista" class="lista-itens"></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="calendario-dia-fechar">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== ALERTA VERMELHO: CONTA VENCENDO (amanhã / hoje) ===================== -->
+<div class="alerta-tela hidden" id="alerta-tela" role="alertdialog" aria-modal="true" aria-labelledby="alerta-tela-titulo">
+  <div class="alerta-tela-caixa">
+    <div class="alerta-tela-sirene" aria-hidden="true">🚨</div>
+    <h3 id="alerta-tela-titulo">Atenção: conta vencendo!</h3>
+    <p class="alerta-tela-sub" id="alerta-tela-sub"></p>
+    <div id="alerta-tela-lista" class="alerta-tela-lista"></div>
+    <button class="alerta-tela-fechar" id="alerta-tela-fechar">Entendi</button>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="dicionario-categorias.js"></script>
+<script src="bancos.js"></script>
+<script src="estado.js"></script>
+<script src="graficos.js"></script>
+<script src="personagem.js"></script>
+<script src="despesas.js"></script>
+<script src="notificacoes.js"></script>
+<script src="backup.js"></script>
+<script src="configuracoes.js"></script>
+<script src="onboarding.js"></script>
+<script src="cartoes.js"></script>
+<script src="cartoes-central.js"></script>
+<script src="saudacao.js"></script>
+<script src="frases.js"></script>
+<script src="home.js"></script>
+<script src="compras-pendentes.js"></script>
+<script src="ui-premium.js"></script>
+<script src="metas.js"></script>
+<script src="evolucao.js"></script>
+<script src="calendario.js"></script>
+<script src="analise.js"></script>
+<script src="tutorial.js"></script>
+<script src="script.js"></script>
+
+<script>
+if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch((e) => console.warn("Service Worker não registrado:", e));
+  });
+}
+</script>
+</body>
+</html>
